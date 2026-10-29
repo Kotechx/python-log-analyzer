@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 def parse_ssh_line(line):
@@ -53,8 +54,23 @@ def detect_brute_force(grouped_logs, threshold=5, window_minutes=10):
                 })
     return alerts
 
+def validate_against_ground_truth(alerts, ground_truth_path):
+    with open(ground_truth_path, "r") as f:
+        ground_truth = json.load(f)
+        detected = False
+        for alert in alerts:
+            if alert["user"] == ground_truth["user"] and alert["ip"] == ground_truth["ip_address"]:
+                detected = True
+                break
+    if detected:
+        print("Attack detected successfully")
+    else:
+        print("Attack not detected")
+    return detected
+
 if __name__ == "__main__":
     logs = load_ssh_logs("sample_logs/auth.log")
     grouped = group_failed_logins_by_user_ip(logs)
     alerts = detect_brute_force(grouped)
     print(alerts)
+    validate_against_ground_truth(alerts, "sample_logs/ground_truth.json")
