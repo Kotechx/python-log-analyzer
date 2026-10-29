@@ -57,9 +57,10 @@ def detect_brute_force(grouped_logs, threshold=5, window_minutes=10):
 def validate_against_ground_truth(alerts, ground_truth_path):
     with open(ground_truth_path, "r") as f:
         ground_truth = json.load(f)
-        detected = False
-        for alert in alerts:
-            if alert["user"] == ground_truth["user"] and alert["ip"] == ground_truth["ip_address"]:
+    detected = False
+    for alert in alerts:
+        for gt in ground_truth:
+            if alert["ip"] == gt["ip_address"] and alert["mitre_attack_id"] == gt["mitre_attack_id"]:
                 detected = True
                 break
     if detected:
@@ -68,9 +69,27 @@ def validate_against_ground_truth(alerts, ground_truth_path):
         print("Attack not detected")
     return detected
 
+def parse_nginx_line(line):
+    parts = line.split()
+    ip = parts[0]
+    path = parts[5]
+    status = parts[7]
+    timestamp = datetime.strptime(parts[3].strip("[]"), "%d/%b/%Y:%H:%M:%S")
+    return {
+        "timestamp": timestamp,
+        "ip": ip,
+        "path": path,
+        "status": status,
+    }
+
+def load_nginx_logs(file_path):
+    parsed_lines = []
 if __name__ == "__main__":
     logs = load_ssh_logs("sample_logs/auth.log")
     grouped = group_failed_logins_by_user_ip(logs)
     alerts = detect_brute_force(grouped)
     print(alerts)
     validate_against_ground_truth(alerts, "sample_logs/ground_truth.json")
+
+    test_line = '203.0.113.45 - - [14/Oct/2026:18:33:12] "GET /login.php HTTP/1.1" 200 512'
+    print(parse_nginx_line(test_line))
