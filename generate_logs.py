@@ -37,25 +37,60 @@ def generate_normal_logs(start_time,num_days):
 
 
 
+def nginx_line(timestamp, ip, path, status):
+    formatted_time = timestamp.strftime("%d/%b/%Y:%H:%M:%S")
+    return f"{ip} - - [{formatted_time}] \"GET {path} HTTP/1.1\" {status} 512"
+    
+def generate_scan_burst(start_time, ip):
+    lines = []
+    for i in range(20):
+        timestamp = start_time + timedelta(seconds=i*2)
+        path = f"/path{i}"
+        line = nginx_line(timestamp, ip, path, 404)
+        lines.append(line)
+    return lines
+
+def generate_normal_web_traffic(start_time, num_days):
+    lines = []
+    for i in range(num_days):
+        for j in range(5):
+            timestamp = start_time + timedelta(days=i, hours=j)
+            common_path = random.choice(["/index.html", "/login.php", "/logout.php", "/register.php", "/user.php"])
+            line = nginx_line(timestamp, "192.168.1.50", common_path, 200)
+            lines.append(line)
+    return lines
+
 
 if __name__ == "__main__":
     os.makedirs("sample_logs", exist_ok=True)
     start_time = datetime.now()
     attack_time = start_time + timedelta(days=3, hours=2)
-    ground_truth = {
-        "attack_type": "brute_force",
-        "mitre_attack_id": "T1110.001",
-        "ip_address": "203.0.113.45",
-        "user": "root",
-        "start_time": attack_time.isoformat(),
-    }
+    scan_time = start_time + timedelta(days=5, hours=3)
     burst = generate_brute_force_burst(attack_time, "root", "203.0.113.45")
     normal = generate_normal_logs(start_time, 7)
-    all_lines = burst + normal
+    scan_burst = generate_scan_burst(scan_time, "198.51.100.23")
+    web_normal = generate_normal_web_traffic(start_time, 7)
+    ground_truth = [
+        {"attack_type": "brute_force","mitre_attack_id": "T1110.001","ip_address": "203.0.113.45","user": "root","start_time": attack_time.isoformat()},
+        {"attack_type": "port_scan","mitre_attack_id": "T1595.002","ip_address": "198.51.100.23","start_time": scan_time.isoformat()}
+    ]
     with open("sample_logs/auth.log", "w") as f:
-        for line in all_lines:
+        for line in burst + normal:
             f.write(line + "\n")
+
+    with open("sample_logs/access.log", "w") as f:
+        for line in scan_burst + web_normal:
+            f.write(line + "\n")
+
     with open("sample_logs/ground_truth.json", "w") as f:
         json.dump(ground_truth, f, indent=2)
+
+    
+
+    
+    
+    
+
+    
 
 
