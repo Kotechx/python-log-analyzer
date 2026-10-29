@@ -1,4 +1,4 @@
-import os, random
+import os, random, json
 from datetime import datetime, timedelta
 
 def ssh_failed_line(timestamp, user, ip):
@@ -40,15 +40,22 @@ def generate_normal_logs(start_time,num_days):
 
 if __name__ == "__main__":
     os.makedirs("sample_logs", exist_ok=True)
-    burst = generate_brute_force_burst(datetime.now(), "root", "203.0.113.45")
-    for line in burst:
-        print(line)
-
+    start_time = datetime.now()
+    attack_time = start_time + timedelta(days=3, hours=2)
+    ground_truth = {
+        "attack_type": "brute_force",
+        "mitre_attack_id": "T1110.001",
+        "ip_address": "203.0.113.45",
+        "user": "root",
+        "start_time": attack_time.isoformat(),
+    }
+    burst = generate_brute_force_burst(attack_time, "root", "203.0.113.45")
+    normal = generate_normal_logs(start_time, 7)
+    all_lines = burst + normal
     with open("sample_logs/auth.log", "w") as f:
-        for line in burst:
+        for line in all_lines:
             f.write(line + "\n")
+    with open("sample_logs/ground_truth.json", "w") as f:
+        json.dump(ground_truth, f, indent=2)
 
-    
-    normal = generate_normal_logs(datetime.now(), 2)
-    for line in normal:
-        print(line)
+
