@@ -60,30 +60,47 @@ def generate_normal_web_traffic(start_time, num_days):
             lines.append(line)
     return lines
 
+def generate_traversal_burst(start_time, ip):
+    lines = []
+    paths = ["/../../../etc/passwd", "/../../../../etc/shadow", "/..%2f..%2f..%2fetc%2fpasswd"]
+    for i in range(len(paths)):
+        timestamp = start_time + timedelta(seconds=i*5)
+        path = paths[i]
+        line = nginx_line(timestamp, ip, path, 403)
+        lines.append(line)
+    return lines
+
+
 
 if __name__ == "__main__":
     os.makedirs("sample_logs", exist_ok=True)
     start_time = datetime.now()
     attack_time = start_time + timedelta(days=3, hours=2)
     scan_time = start_time + timedelta(days=5, hours=3)
+    traversal_time = start_time + timedelta(days=6, hours=1)
     burst = generate_brute_force_burst(attack_time, "root", "203.0.113.45")
     normal = generate_normal_logs(start_time, 7)
     scan_burst = generate_scan_burst(scan_time, "198.51.100.23")
     web_normal = generate_normal_web_traffic(start_time, 7)
+    traversal_burst = generate_traversal_burst(traversal_time, "203.0.113.99")
     ground_truth = [
         {"attack_type": "brute_force","mitre_attack_id": "T1110.001","ip_address": "203.0.113.45","user": "root","start_time": attack_time.isoformat()},
-        {"attack_type": "port_scan","mitre_attack_id": "T1595.002","ip_address": "198.51.100.23","start_time": scan_time.isoformat()}
+        {"attack_type": "port_scan","mitre_attack_id": "T1595.002","ip_address": "198.51.100.23","start_time": scan_time.isoformat()},
+        {"attack_type": "path_traversal", "mitre_attack_id": "T1083", "ip_address": "203.0.113.99", "start_time": traversal_time.isoformat()}
     ]
     with open("sample_logs/auth.log", "w") as f:
         for line in burst + normal:
             f.write(line + "\n")
 
     with open("sample_logs/access.log", "w") as f:
-        for line in scan_burst + web_normal:
+        for line in scan_burst + web_normal + traversal_burst:
             f.write(line + "\n")
 
     with open("sample_logs/ground_truth.json", "w") as f:
         json.dump(ground_truth, f, indent=2)
+
+    
+
 
     
 
