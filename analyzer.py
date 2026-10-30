@@ -121,6 +121,19 @@ def detect_port_scan(grouped_logs, threshold=10, window_minutes=5):
         })
     return alerts
 
+def detect_path_traversal(nginx_logs):
+    alerts = []
+    for log in nginx_logs:
+        if "../" in log["path"] or "%2f" in log["path"]:
+            alerts.append({
+                "rule_id": "PATH_TRAVERSAL",
+                "severity": "HIGH",
+                "ip": log["ip"],
+                "path": log["path"],
+                "mitre_attack_id": "T1083",
+            })
+    return alerts
+
 if __name__ == "__main__":
     logs = load_ssh_logs("sample_logs/auth.log")
     grouped = group_failed_logins_by_user_ip(logs)
@@ -142,5 +155,9 @@ if __name__ == "__main__":
     scan_alerts = detect_port_scan(grouped_web)
     print(scan_alerts) 
     validate_against_ground_truth(scan_alerts, "sample_logs/ground_truth.json")
+
+    traversal_alerts = detect_path_traversal(nginx_logs)
+    print(traversal_alerts)
+    validate_against_ground_truth(traversal_alerts, "sample_logs/ground_truth.json")
 
     
