@@ -1,6 +1,16 @@
 import json
 from datetime import datetime
 
+
+IP_COUNTRY_MAP = {
+    "203.0.113.200": "Canada",
+    "45.76.100.50": "Russia",
+    "192.168.1.50": "Canada",
+}
+
+def get_country_from_ip(ip):
+    return IP_COUNTRY_MAP.get(ip, "Unknown")
+
 def parse_ssh_line(line):
     parts = line.split()
     text_with_year = "2026 " + parts[0] + " " + parts[1] + " " + parts[2]
@@ -60,7 +70,10 @@ def validate_against_ground_truth(alerts, ground_truth_path):
     detected = False
     for alert in alerts:
         for gt in ground_truth:
-            if alert["ip"] == gt["ip_address"] and alert["mitre_attack_id"] == gt["mitre_attack_id"]:
+            same_mitre = alert.get("mitre_attack_id") == gt.get("mitre_attack_id")
+            same_ip = alert.get("ip") is not None and alert.get("ip") == gt.get("ip_address")
+            same_user = alert.get("user") is not None and alert.get("user") == gt.get("user")
+            if same_mitre and (same_ip or same_user):
                 detected = True
                 break
     if detected:
@@ -134,6 +147,37 @@ def detect_path_traversal(nginx_logs):
             })
     return alerts
 
+def group_successful_logins_by_user(logs):
+    grouped_logs = {}
+    for log in logs:
+        if log["status"] == "Accepted":
+            key = log["user"]
+            if key not in grouped_logs:
+                grouped_logs[key] = []
+            grouped_logs[key].append(log)
+    return grouped_logs
+
+def detect_impossible_travel(grouped_users,window_minutes=60):
+    alerts = []
+    for user, logins in grouped_users.items():
+        for i in range(len(logins)):
+            for j in range(i+1, len(logins)):
+                login1 = logins[i]
+                login2 = logins[j]
+                different_ip = login1["ip"] != login2["ip"]
+                different_country = get_country_from_ip(login1["ip"]) != get_country_from_ip(login2["ip"])
+                within_window = abs((login2["timestamp"] - login1["timestamp"]).total_seconds()) <= window_minutes * 60
+                if different_ip and different_country and within_window:
+                    alerts.append({
+                        "rule_id": "IMPOSSIBLE_TRAVEL",
+                        "severity": "HIGH",
+                        "user": user,
+                        "ip1": login1["ip"],
+                        "ip2": login2["ip"],
+                        "mitre_attack_id": "T1078",
+                    })
+    return alerts
+
 if __name__ == "__main__":
     logs = load_ssh_logs("sample_logs/auth.log")
     grouped = group_failed_logins_by_user_ip(logs)
@@ -160,4 +204,23 @@ if __name__ == "__main__":
     print(traversal_alerts)
     validate_against_ground_truth(traversal_alerts, "sample_logs/ground_truth.json")
 
-    
+    print(get_country_from_ip("45.76.100.50"))
+    print(get_country_from_ip("1.2.3.4"))
+
+    ssh_logs = load_ssh_logs("sample_logs/auth.log")
+    grouped_users = group_successful_logins_by_user(ssh_logs)
+    for user, logins in grouped_users.items():
+        print(user, len(logins))
+
+    ssh_logs = load_ssh_logs("sample_logs/auth.log")
+    grouped_users = group_successful_logins_by_user(ssh_logs)
+    travel_alerts = detect_impossible_travel(grouped_users)
+    print(travel_alerts)
+
+
+
+
+    validate_against_ground_truth(alerts, "sample_logs/ground_truth.json")
+    validate_against_ground_truth(scan_alerts, "sample_logs/ground_truth.json")
+    validate_against_ground_truth(traversal_alerts, "sample_logs/ground_truth.json")
+    validate_against_ground_truth(travel_alerts, "sample_logs/ground_truth.json")   
