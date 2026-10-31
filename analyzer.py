@@ -50,18 +50,21 @@ def detect_brute_force(grouped_logs, threshold=5, window_minutes=10):
     for key, failures in grouped_logs.items():
         user, ip = key
         if len(failures) >= threshold:
-            first_timestamp = failures[0]["timestamp"]
-            last_timestamp = failures[-1]["timestamp"]
-            duration = (last_timestamp - first_timestamp).total_seconds()
-            if duration <= window_minutes * 60:
-                alerts.append({
-                    "rule_id": "BRUTE_SSH_LOGIN",
-                    "severity": "HIGH",
-                    "user": user,
-                    "ip": ip,
-                    "failed_attempts": len(failures),
-                    "mitre_attack_id": "T1110.001",
-                })
+            for i in range(len(failures)):
+                if i >= threshold - 1:
+                    window_start = failures[i - (threshold - 1)]["timestamp"]
+                    window_end = failures[i]["timestamp"]
+                    duration = (window_end - window_start).total_seconds()
+                    if duration <= window_minutes * 60:
+                        alerts.append({
+                            "rule_id": "BRUTE_SSH_LOGIN",
+                            "severity": "HIGH",
+                            "user": user,
+                            "ip": ip,
+                            "failed_attempts": threshold,
+                            "mitre_attack_id": "T1110.001",
+                        })
+                        break
     return alerts
 
 def validate_against_ground_truth(alerts, ground_truth_path):

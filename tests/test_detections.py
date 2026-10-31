@@ -93,3 +93,22 @@ def test_detect_impossible_travel_finds_attack():
     # Assert: check the result
     assert len(alerts) == 1
     assert alerts[0]["mitre_attack_id"] == "T1078"
+
+def test_detect_brute_force_ignores_stale_outlier():
+    fake_logs = {
+        ("root", "203.0.113.45"): [
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 0), "status": "Failed", "user": "root", "ip": "203.0.113.45"},
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 10), "status": "Failed", "user": "root", "ip": "203.0.113.45"},
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 20), "status": "Failed", "user": "root", "ip": "203.0.113.45"},
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 30), "status": "Failed", "user": "root", "ip": "203.0.113.45"},
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 40), "status": "Failed", "user": "root", "ip": "203.0.113.45"},
+            {"timestamp": datetime(2026, 1, 1, 11, 30, 0), "status": "Failed", "user": "root", "ip": "203.0.113.45"}
+        ]
+    }
+
+    # Act: run the function under test
+    alerts = detect_brute_force(fake_logs)
+
+    # Assert: check the result
+    assert len(alerts) == 1
+
