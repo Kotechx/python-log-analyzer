@@ -1,0 +1,46 @@
+[
+  {
+    "rule_id": "BRUTE_SSH_LOGIN",
+    "severity": "HIGH",
+    "user": "root",
+    "ip": "203.0.113.45",
+    "failed_attempts": 5,
+    "mitre_attack_id": "T1110.001"
+  },
+  {
+    "rule_id": "PORT_SCAN",
+    "severity": "HIGH",
+    "ip": "198.51.100.23",
+    "scan_count": 20,
+    "mitre_attack_id": "T1595.002"
+  },
+  {
+    "rule_id": "PATH_TRAVERSAL",
+    "severity": "HIGH",
+    "ip": "203.0.113.99",
+    "path": "/../../../etc/passwd",
+    "mitre_attack_id": "T1083"
+  },
+  {
+    "rule_id": "PATH_TRAVERSAL",
+    "severity": "HIGH",
+    "ip": "203.0.113.99",
+    "path": "/../../../../etc/shadow",
+    "mitre_attack_id": "T1083"
+  },
+  {
+    "rule_id": "PATH_TRAVERSAL",
+    "severity": "HIGH",
+    "ip": "203.0.113.99",
+    "path": "/..%2f..%2f..%2fetc%2fpasswd",
+    "mitre_attack_id": "T1083"
+  },
+  {
+    "rule_id": "IMPOSSIBLE_TRAVEL",
+    "severity": "HIGH",
+    "user": "arthur",
+    "ip1": "203.0.113.200",
+    "ip2": "45.76.100.50",
+    "mitre_attack_id": "T1078"
+  }
+]

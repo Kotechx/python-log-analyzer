@@ -179,48 +179,31 @@ def detect_impossible_travel(grouped_users,window_minutes=60):
     return alerts
 
 if __name__ == "__main__":
-    logs = load_ssh_logs("sample_logs/auth.log")
-    grouped = group_failed_logins_by_user_ip(logs)
-    alerts = detect_brute_force(grouped)
-    print(alerts)
-    validate_against_ground_truth(alerts, "sample_logs/ground_truth.json")
-
+    # Load both log sources once
+    ssh_logs = load_ssh_logs("sample_logs/auth.log")
     nginx_logs = load_nginx_logs("sample_logs/access.log")
-    print(f"Loaded {len(nginx_logs)} nginx lines")
-    print(nginx_logs[0])
 
-    grouped_web = group_requests_by_ip(nginx_logs)
-    print(grouped_web.keys())
-    for ip, requests in grouped_web.items():
-        print(ip, len(requests))
+    # Group data the way each detection needs it
+    failed_by_user_ip = group_failed_logins_by_user_ip(ssh_logs)
+    successful_by_user = group_successful_logins_by_user(ssh_logs)
+    requests_by_ip = group_requests_by_ip(nginx_logs)
 
-    nginx_logs = load_nginx_logs("sample_logs/access.log")
-    grouped_web = group_requests_by_ip(nginx_logs)
-    scan_alerts = detect_port_scan(grouped_web)
-    print(scan_alerts) 
-    validate_against_ground_truth(scan_alerts, "sample_logs/ground_truth.json")
-
+    # Run the four detections
+    brute_force_alerts = detect_brute_force(failed_by_user_ip)
+    scan_alerts = detect_port_scan(requests_by_ip)
     traversal_alerts = detect_path_traversal(nginx_logs)
-    print(traversal_alerts)
-    validate_against_ground_truth(traversal_alerts, "sample_logs/ground_truth.json")
+    travel_alerts = detect_impossible_travel(successful_by_user)
 
-    print(get_country_from_ip("45.76.100.50"))
-    print(get_country_from_ip("1.2.3.4"))
+    # Combine all alerts and save to a file
+    all_alerts = brute_force_alerts + scan_alerts + traversal_alerts + travel_alerts
+    with open("alerts.json", "w") as f:
+        json.dump(all_alerts, f, indent=2)
 
-    ssh_logs = load_ssh_logs("sample_logs/auth.log")
-    grouped_users = group_successful_logins_by_user(ssh_logs)
-    for user, logins in grouped_users.items():
-        print(user, len(logins))
-
-    ssh_logs = load_ssh_logs("sample_logs/auth.log")
-    grouped_users = group_successful_logins_by_user(ssh_logs)
-    travel_alerts = detect_impossible_travel(grouped_users)
-    print(travel_alerts)
-
-
-
-
-    validate_against_ground_truth(alerts, "sample_logs/ground_truth.json")
+    # Validate each detection against the ground truth
+    print("--- Validation against ground truth ---")
+    validate_against_ground_truth(brute_force_alerts, "sample_logs/ground_truth.json")
     validate_against_ground_truth(scan_alerts, "sample_logs/ground_truth.json")
     validate_against_ground_truth(traversal_alerts, "sample_logs/ground_truth.json")
-    validate_against_ground_truth(travel_alerts, "sample_logs/ground_truth.json")   
+    validate_against_ground_truth(travel_alerts, "sample_logs/ground_truth.json")
+
+    print(f"\n{len(all_alerts)} alerts written to alerts.json")
