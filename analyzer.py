@@ -119,22 +119,25 @@ def group_requests_by_ip(logs):
 def detect_port_scan(grouped_logs, threshold=10, window_minutes=5):
     alerts = []
     for ip, requests in grouped_logs.items():
-        fails_404 =[]
+        fails_404 = []
         for request in requests:
             if request["status"] == "404":
                 fails_404.append(request)
         if len(fails_404) >= threshold:
-            first_timestamp = fails_404[0]["timestamp"]
-            last_timestamp = fails_404[-1]["timestamp"]
-            duration = (last_timestamp - first_timestamp).total_seconds()
-            if duration <= window_minutes * 60:
-                alerts.append({
-                    "rule_id": "PORT_SCAN",
-                    "severity": "HIGH",
-                    "ip": ip,
-                    "scan_count": len(fails_404),
-                    "mitre_attack_id": "T1595.002",
-        })
+            for i in range(len(fails_404)):
+                if i >= threshold - 1:
+                    window_start = fails_404[i - (threshold - 1)]["timestamp"]
+                    window_end = fails_404[i]["timestamp"]
+                    duration = (window_end - window_start).total_seconds()
+                    if duration <= window_minutes * 60:
+                        alerts.append({
+                            "rule_id": "PORT_SCAN",
+                            "severity": "HIGH",
+                            "ip": ip,
+                            "scan_count": len(fails_404),
+                            "mitre_attack_id": "T1595.002",
+                        })
+                        break
     return alerts
 
 def detect_path_traversal(nginx_logs):

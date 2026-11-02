@@ -112,3 +112,26 @@ def test_detect_brute_force_ignores_stale_outlier():
     # Assert: check the result
     assert len(alerts) == 1
 
+def test_detect_port_scan_ignores_stale_outlier():
+    fake_logs = {
+        "203.0.113.45": [
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 0), "ip": "203.0.113.45", "path": "/index.html", "status": "404"},
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 10), "ip": "203.0.113.45", "path": "/index.html", "status": "404"},
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 20), "ip": "203.0.113.45", "path": "/index.html", "status": "404"},
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 30), "ip": "203.0.113.45", "path": "/index.html", "status": "404"},
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 40), "ip": "203.0.113.45", "path": "/index.html", "status": "404"},
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 50), "ip": "203.0.113.45", "path": "/index.html", "status": "404"},
+            {"timestamp": datetime(2026, 1, 1, 10, 1, 00), "ip": "203.0.113.45", "path": "/index.html", "status": "404"},
+            {"timestamp": datetime(2026, 1, 1, 10, 1, 10), "ip": "203.0.113.45", "path": "/index.html", "status": "404"},
+            {"timestamp": datetime(2026, 1, 1, 10, 1, 20), "ip": "203.0.113.45", "path": "/index.html", "status": "404"},
+            {"timestamp": datetime(2026, 1, 1, 10, 1, 30), "ip": "203.0.113.45", "path": "/index.html", "status": "404"},
+            {"timestamp": datetime(2026, 1, 1, 10, 27, 15), "ip": "203.0.113.45", "path": "/index.html", "status": "404"},
+        ]
+    }
+
+    # Act: run the function under test
+    alerts = detect_port_scan(fake_logs)
+
+    # Assert: check the result
+    assert len(alerts) == 1
+
