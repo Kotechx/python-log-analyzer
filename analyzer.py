@@ -1,4 +1,4 @@
-import json
+import json, argparse
 from datetime import datetime
 
 
@@ -185,9 +185,15 @@ def detect_impossible_travel(grouped_users,window_minutes=60):
     return alerts
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Analyze SSH and web logs for attack patterns")
+    parser.add_argument("--auth-log", default="sample_logs/auth.log", help="Path to the SSH auth log")
+    parser.add_argument("--access-log", default="sample_logs/access.log", help="Path to the nginx access log")
+    parser.add_argument("--output", default="alerts.json", help="Path to write the alerts JSON file")
+    args = parser.parse_args()
+
     # Load both log sources once
-    ssh_logs = load_ssh_logs("sample_logs/auth.log")
-    nginx_logs = load_nginx_logs("sample_logs/access.log")
+    ssh_logs = load_ssh_logs(args.auth_log)
+    nginx_logs = load_nginx_logs(args.access_log)
 
     # Group data the way each detection needs it
     failed_by_user_ip = group_failed_logins_by_user_ip(ssh_logs)
@@ -202,7 +208,7 @@ if __name__ == "__main__":
 
     # Combine all alerts and save to a file
     all_alerts = brute_force_alerts + scan_alerts + traversal_alerts + travel_alerts
-    with open("alerts.json", "w") as f:
+    with open(args.output, "w") as f:
         json.dump(all_alerts, f, indent=2)
 
     # Validate each detection against the ground truth
@@ -212,4 +218,4 @@ if __name__ == "__main__":
     validate_against_ground_truth(traversal_alerts, "sample_logs/ground_truth.json")
     validate_against_ground_truth(travel_alerts, "sample_logs/ground_truth.json")
 
-    print(f"\n{len(all_alerts)} alerts written to alerts.json")
+    print(f"\n{len(all_alerts)} alerts written to {args.output}")
