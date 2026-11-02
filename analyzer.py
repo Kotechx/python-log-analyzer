@@ -184,6 +184,22 @@ def detect_impossible_travel(grouped_users,window_minutes=60):
                     })
     return alerts
 
+
+def validate_coverage(alerts, ground_truth_path):
+    missed = []
+    for gt in ground_truth:
+        found = False
+        for alert in alerts:
+            same_mitre = alert.get("mitre_attack_id") == gt.get("mitre_attack_id")
+            same_ip = alert.get("ip") is not None and alert.get("ip") == gt.get("ip_address")
+            same_user = alert.get("user") is not None and alert.get("user") == gt.get("user")
+            if same_mitre and (same_ip or same_user):
+                found = True
+                break
+        if not found:
+            missed.append(gt)
+    return missed
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Analyze SSH and web logs for attack patterns")
     parser.add_argument("--auth-log", default="sample_logs/auth.log", help="Path to the SSH auth log")
@@ -211,11 +227,15 @@ if __name__ == "__main__":
     with open(args.output, "w") as f:
         json.dump(all_alerts, f, indent=2)
 
-    # Validate each detection against the ground truth
-    print("--- Validation against ground truth ---")
-    validate_against_ground_truth(brute_force_alerts, "sample_logs/ground_truth.json")
-    validate_against_ground_truth(scan_alerts, "sample_logs/ground_truth.json")
-    validate_against_ground_truth(traversal_alerts, "sample_logs/ground_truth.json")
-    validate_against_ground_truth(travel_alerts, "sample_logs/ground_truth.json")
+    # Validate full coverage against the ground truth
+    with open("sample_logs/ground_truth.json", "r") as f:
+        ground_truth = json.load(f)
+    missed = validate_coverage(all_alerts, ground_truth)
+    if missed:
+        print(f"--- {len(missed)} attack(s) missed ---")
+        for m in missed:
+            print(m)
+    else:
+        print("--- All ground truth attacks detected ---")
 
     print(f"\n{len(all_alerts)} alerts written to {args.output}")
