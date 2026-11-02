@@ -185,7 +185,7 @@ def detect_impossible_travel(grouped_users,window_minutes=60):
     return alerts
 
 
-def validate_coverage(alerts, ground_truth_path):
+def validate_coverage(alerts, ground_truth):
     missed = []
     for gt in ground_truth:
         found = False

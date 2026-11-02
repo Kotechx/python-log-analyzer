@@ -5,6 +5,7 @@ from analyzer import (
     detect_port_scan,
     detect_path_traversal,
     detect_impossible_travel,
+    validate_coverage,
 )
 
 def test_parse_ssh_line_extracts_failed_status():
@@ -134,4 +135,37 @@ def test_detect_port_scan_ignores_stale_outlier():
 
     # Assert: check the result
     assert len(alerts) == 1
+
+def test_validate_coverage_detects_missed_attack():
+    # Arrange: two brute-force attacks; the alert list only covers the first
+    ground_truth = [
+        {
+            "attack_type": "brute_force",
+            "mitre_attack_id": "T1110.001",
+            "ip_address": "203.0.113.45",
+            "user": "root",
+        },
+        {
+            "attack_type": "brute_force",
+            "mitre_attack_id": "T1110.001",
+            "ip_address": "198.51.100.10",
+            "user": "admin",
+        },
+    ]
+    alerts = [
+        {
+            "rule_id": "BRUTE_SSH_LOGIN",
+            "severity": "HIGH",
+            "user": "root",
+            "ip": "203.0.113.45",
+            "failed_attempts": 5,
+            "mitre_attack_id": "T1110.001",
+        }
+    ]
+
+    # Act
+    missed = validate_coverage(alerts, ground_truth)
+
+    # Assert: the second attack was not covered
+    assert len(missed) == 1
 
