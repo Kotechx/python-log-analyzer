@@ -16,8 +16,12 @@ def parse_ssh_line(line):
     text_with_year = "2026 " + parts[0] + " " + parts[1] + " " + parts[2]
     timestamp = datetime.strptime(text_with_year, "%Y %b %d %H:%M:%S")
     status = parts[5]
-    user = parts[8]
-    ip = parts[10]
+    if parts[8] == "invalid":
+        user = parts[10]
+        ip = parts[12]
+    else:
+        user = parts[8]
+        ip = parts[10]
     return {
         "timestamp": timestamp,
         "status": status,

@@ -169,3 +169,9 @@ def test_validate_coverage_detects_missed_attack():
     # Assert: the second attack was not covered
     assert len(missed) == 1
 
+def test_parse_ssh_line_handles_invalid_user():
+    line = "Oct 31 20:59:11 linux-target sshd[1234]: Failed password for invalid user hacker from 203.0.113.45 port 51000 ssh2"
+    result = parse_ssh_line(line)
+    assert result["user"] == "hacker"
+    assert result["ip"] == "203.0.113.45"
+
