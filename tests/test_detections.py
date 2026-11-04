@@ -175,3 +175,15 @@ def test_parse_ssh_line_handles_invalid_user():
     assert result["user"] == "hacker"
     assert result["ip"] == "203.0.113.45"
 
+def test_detect_path_traversal_catches_uppercase_encoding():
+    fake_logs = [
+        {
+            "timestamp": datetime(2026, 1, 1, 10, 0, 0),
+            "ip": "203.0.113.45",
+            "path": "/..%2F..%2F..%2Fetc%2Fpasswd",
+            "status": "200",
+        }
+    ]
+    alerts = detect_path_traversal(fake_logs)
+    assert len(alerts) == 1
+    assert alerts[0]["mitre_attack_id"] == "T1083"

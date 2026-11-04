@@ -147,7 +147,8 @@ def detect_port_scan(grouped_logs, threshold=10, window_minutes=5):
 def detect_path_traversal(nginx_logs):
     alerts = []
     for log in nginx_logs:
-        if "../" in log["path"] or "%2f" in log["path"]:
+        path_lower = log["path"].lower()
+        if "../" in path_lower or "%2f" in path_lower:
             alerts.append({
                 "rule_id": "PATH_TRAVERSAL",
                 "severity": "HIGH",
