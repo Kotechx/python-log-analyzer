@@ -24,7 +24,7 @@ def generate_brute_force_burst(start_time,user,ip):
 
 def generate_normal_logs(start_time,num_days):
     list_of_lines = []
-    list_of_users = ["root", "admin", "user", "test", "guest"]
+    list_of_users = ["admin", "user", "test", "guest","operator"]
     ip_address = "192.168.1.50"
     for i in range(num_days):
         for j in range(3):
@@ -77,6 +77,7 @@ def generate_impossible_travel_burst(start_time, user):
     return lines
 
 if __name__ == "__main__":
+    random.seed(42)
     os.makedirs("sample_logs", exist_ok=True)
     
     start_time = datetime.now()
