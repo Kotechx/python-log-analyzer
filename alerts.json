@@ -9,7 +9,7 @@
   },
   {
     "rule_id": "PORT_SCAN",
-    "severity": "HIGH",
+    "severity": "MEDIUM",
     "ip": "198.51.100.23",
     "scan_count": 20,
     "mitre_attack_id": "T1595.002"

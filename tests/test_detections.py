@@ -164,10 +164,45 @@ def test_validate_coverage_detects_missed_attack():
     ]
 
     # Act
-    missed = validate_coverage(alerts, ground_truth)
+    missed, extra = validate_coverage(alerts, ground_truth)
 
     # Assert: the second attack was not covered
     assert len(missed) == 1
+
+def test_validate_coverage_detects_extra_alert():
+    # Arrange: one brute-force attack; alerts include that match plus one that matches nothing
+    ground_truth = [
+        {
+            "attack_type": "brute_force",
+            "mitre_attack_id": "T1110.001",
+            "ip_address": "203.0.113.45",
+            "user": "root",
+        },
+    ]
+    alerts = [
+        {
+            "rule_id": "BRUTE_SSH_LOGIN",
+            "severity": "HIGH",
+            "user": "root",
+            "ip": "203.0.113.45",
+            "failed_attempts": 5,
+            "mitre_attack_id": "T1110.001",
+        },
+        {
+            "rule_id": "BRUTE_SSH_LOGIN",
+            "severity": "HIGH",
+            "user": "admin",
+            "ip": "198.51.100.10",
+            "failed_attempts": 5,
+            "mitre_attack_id": "T1110.001",
+        },
+    ]
+
+    # Act
+    missed, extra = validate_coverage(alerts, ground_truth)
+
+    # Assert: the unmatched alert is reported as extra
+    assert len(extra) == 1
 
 def test_parse_ssh_line_handles_invalid_user():
     line = "Oct 31 20:59:11 linux-target sshd[1234]: Failed password for invalid user hacker from 203.0.113.45 port 51000 ssh2"
@@ -187,3 +222,20 @@ def test_detect_path_traversal_catches_uppercase_encoding():
     alerts = detect_path_traversal(fake_logs)
     assert len(alerts) == 1
     assert alerts[0]["mitre_attack_id"] == "T1083"
+
+def test_detect_brute_force_reports_actual_count():
+    fake_logs = {
+        ("root", "203.0.113.45"): [
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 0), "status": "Failed", "user": "root", "ip": "203.0.113.45"},
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 10), "status": "Failed", "user": "root", "ip": "203.0.113.45"},
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 20), "status": "Failed", "user": "root", "ip": "203.0.113.45"},
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 30), "status": "Failed", "user": "root", "ip": "203.0.113.45"},
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 40), "status": "Failed", "user": "root", "ip": "203.0.113.45"},
+            {"timestamp": datetime(2026, 1, 1, 10, 0, 50), "status": "Failed", "user": "root", "ip": "203.0.113.45"},
+            {"timestamp": datetime(2026, 1, 1, 10, 1, 0), "status": "Failed", "user": "root", "ip": "203.0.113.45"},
+            {"timestamp": datetime(2026, 1, 1, 10, 1, 10), "status": "Failed", "user": "root", "ip": "203.0.113.45"},
+        ]
+    }
+    alerts = detect_brute_force(fake_logs)
+    assert alerts[0]["failed_attempts"] == 8
+

@@ -65,29 +65,12 @@ def detect_brute_force(grouped_logs, threshold=5, window_minutes=10):
                             "severity": "HIGH",
                             "user": user,
                             "ip": ip,
-                            "failed_attempts": threshold,
+                            "failed_attempts": len(failures) - (i - (threshold - 1)),
                             "mitre_attack_id": "T1110.001",
                         })
                         break
     return alerts
 
-def validate_against_ground_truth(alerts, ground_truth_path):
-    with open(ground_truth_path, "r") as f:
-        ground_truth = json.load(f)
-    detected = False
-    for alert in alerts:
-        for gt in ground_truth:
-            same_mitre = alert.get("mitre_attack_id") == gt.get("mitre_attack_id")
-            same_ip = alert.get("ip") is not None and alert.get("ip") == gt.get("ip_address")
-            same_user = alert.get("user") is not None and alert.get("user") == gt.get("user")
-            if same_mitre and (same_ip or same_user):
-                detected = True
-                break
-    if detected:
-        print("Attack detected successfully")
-    else:
-        print("Attack not detected")
-    return detected
 
 def parse_nginx_line(line):
     parts = line.split()
@@ -136,7 +119,7 @@ def detect_port_scan(grouped_logs, threshold=10, window_minutes=5):
                     if duration <= window_minutes * 60:
                         alerts.append({
                             "rule_id": "PORT_SCAN",
-                            "severity": "Medium",
+                            "severity": "MEDIUM",
                             "ip": ip,
                             "scan_count": len(fails_404),
                             "mitre_attack_id": "T1595.002",
@@ -192,6 +175,7 @@ def detect_impossible_travel(grouped_users,window_minutes=60):
 
 def validate_coverage(alerts, ground_truth):
     missed = []
+    extra = []
     for gt in ground_truth:
         found = False
         for alert in alerts:
@@ -203,13 +187,28 @@ def validate_coverage(alerts, ground_truth):
                 break
         if not found:
             missed.append(gt)
-    return missed
+
+    for alert in alerts:
+        found = False
+        for gt in ground_truth:
+            same_mitre = alert.get("mitre_attack_id") == gt.get("mitre_attack_id")
+            same_ip = alert.get("ip") is not None and alert.get("ip") == gt.get("ip_address")
+            same_user = alert.get("user") is not None and alert.get("user") == gt.get("user")
+            if same_mitre and (same_ip or same_user):
+                found = True
+                break
+        if not found:
+            extra.append(alert)
+
+    return missed, extra
+    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Analyze SSH and web logs for attack patterns")
     parser.add_argument("--auth-log", default="sample_logs/auth.log", help="Path to the SSH auth log")
     parser.add_argument("--access-log", default="sample_logs/access.log", help="Path to the nginx access log")
     parser.add_argument("--output", default="alerts.json", help="Path to write the alerts JSON file")
+    parser.add_argument("--ground-truth", default="sample_logs/ground_truth.json", help="Path to the ground truth JSON (optional)")
     args = parser.parse_args()
 
     # Load both log sources once
@@ -233,14 +232,21 @@ if __name__ == "__main__":
         json.dump(all_alerts, f, indent=2)
 
     # Validate full coverage against the ground truth
-    with open("sample_logs/ground_truth.json", "r") as f:
-        ground_truth = json.load(f)
-    missed = validate_coverage(all_alerts, ground_truth)
-    if missed:
-        print(f"--- {len(missed)} attack(s) missed ---")
-        for m in missed:
-            print(m)
-    else:
-        print("--- All ground truth attacks detected ---")
+    try:
+        with open(args.ground_truth, "r") as f:
+            ground_truth = json.load(f)
+        missed, extra = validate_coverage(all_alerts, ground_truth)
+        if missed:
+            print(f"--- {len(missed)} attack(s) missed ---")
+            for m in missed:
+                print(m)
+        else:
+            print("--- All ground truth attacks detected ---")
+        if extra:
+            print(f"--- {len(extra)} alert(s) with no matching ground truth entry ---")
+            for e in extra:
+                print(e)
+    except FileNotFoundError:
+        print(f"--- No ground truth file found at {args.ground_truth}, skipping validation ---")
 
-    print(f"\n{len(all_alerts)} alerts written to {args.output}")
+ 
