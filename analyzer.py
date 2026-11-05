@@ -136,7 +136,7 @@ def detect_port_scan(grouped_logs, threshold=10, window_minutes=5):
                     if duration <= window_minutes * 60:
                         alerts.append({
                             "rule_id": "PORT_SCAN",
-                            "severity": "HIGH",
+                            "severity": "Medium",
                             "ip": ip,
                             "scan_count": len(fails_404),
                             "mitre_attack_id": "T1595.002",
